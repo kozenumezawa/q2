@@ -1,16 +1,16 @@
 package main
 
 import (
-	"fmt"
-	"io"
+	"encoding/json"
+	"log"
 	"net/http"
 
 	"golang.org/x/net/html"
 )
 
 type Page struct {
-	Title       string
-	Description string
+	Title       string `json:"title"`
+	Description string `json:"description"`
 }
 
 func isDescription(attrs []html.Attribute) bool {
@@ -27,15 +27,13 @@ func Get(url string) (*Page, error) {
 
 	resp, err := http.Get(url)
 	if err != nil {
-		// 実際にはちゃんとエラー処理をしましょう
-		panic(err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	doc, err := html.Parse(resp.Body)
 	if err != nil {
-		// 実際にはちゃんとエラー処理しましょう
-		panic(err)
+		return nil, err
 	}
 
 	var f func(*html.Node)
@@ -59,10 +57,25 @@ func Get(url string) (*Page, error) {
 }
 
 func main() {
-	// Getを利用しているとします
-	p, err := Get("http://voyagegroup.com")
-	if err != nil && err != io.EOF {
-		panic(err)
-	}
-	fmt.Printf("%#v", p)
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		url := r.FormValue("url")
+		if url == "" {
+			http.Error(w, "request failed: You need to input URL.", http.StatusBadRequest)
+			return
+		}
+		p, err := Get(url)
+		if err != nil {
+			http.Error(w, "request failed", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+
+		enc := json.NewEncoder(w)
+		if err := enc.Encode(p); err != nil {
+			http.Error(w, "encoding failed", http.StatusInternalServerError)
+			return
+		}
+	})
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
