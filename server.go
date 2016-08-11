@@ -23,7 +23,7 @@ func isDescription(attrs []html.Attribute) bool {
 }
 
 func Get(url string) (*Page, error) {
-	gotPage := &Page{}
+	page := &Page{}
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -39,12 +39,12 @@ func Get(url string) (*Page, error) {
 	var f func(*html.Node)
 	f = func(n *html.Node) {
 		if n.Type == html.ElementNode && n.Data == "title" {
-			gotPage.Title = n.FirstChild.Data
+			page.Title = n.FirstChild.Data
 		}
 		if n.Type == html.ElementNode && n.Data == "meta" {
 			if isDescription(n.Attr) {
 				for _, attr := range n.Attr {
-					gotPage.Description = attr.Val
+					page.Description = attr.Val
 				}
 			}
 		}
@@ -53,7 +53,7 @@ func Get(url string) (*Page, error) {
 		}
 	}
 	f(doc)
-	return gotPage, nil
+	return page, nil
 }
 
 func main() {
